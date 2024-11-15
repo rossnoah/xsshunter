@@ -1,9 +1,7 @@
-const sendgrid = require("@sendgrid/mail");
-sendgrid.setApiKey(process.env.SENDGRID_API_KEY);
 const mustache = require("mustache");
 const fs = require("fs");
-const TurndownService = require("turndown");
 const { title } = require("process");
+const { NodeHtmlMarkdown } = require("node-html-markdown");
 
 const XSS_PAYLOAD_FIRE_EMAIL_TEMPLATE = fs.readFileSync(
   "./templates/xss_email_template.htm",
@@ -19,14 +17,15 @@ async function send_discord_webhook_notification(msg) {
   const subject = msg.subject;
   const html_body = msg.html;
   // convert the html to markdown
-  const markdown_body = TurndownService.turndown(html_body);
-
+  //   const markdown_body = turndownService.turndown(html_body);
+  const markdown_body = NodeHtmlMarkdown.translate(html_body);
   const embed = {
     title: subject,
     description: markdown_body,
   };
   const body = {
     embeds: [embed],
+    content: markdown_body,
   };
 
   await fetch(process.env.DISCORD_WEBHOOK_URL, {
@@ -39,7 +38,7 @@ async function send_discord_webhook_notification(msg) {
   console.debug("Discord notification sent");
 }
 
-async function send_email_notification(xss_payload_fire_data, email) {
+async function send_notification(xss_payload_fire_data) {
   const notification_html_email_body = mustache.render(
     XSS_PAYLOAD_FIRE_EMAIL_TEMPLATE,
     xss_payload_fire_data
@@ -50,25 +49,15 @@ async function send_email_notification(xss_payload_fire_data, email) {
     : "With An Encryption Key";
 
   const msg = {
-    from: process.env.EMAIL_FROM,
-    to: email,
     subject: `[XSS Hunter Express] XSS Payload Fired On ${fire_location}`,
     text: "Only HTML reports are available, please use an email client which supports this.",
     html: notification_html_email_body,
-    asm: {
-      groupId: parseInt(process.env.SENDGRID_UNSUBSRIBE_GROUP_ID),
-      groupsToDisplay: [parseInt(process.env.SENDGRID_UNSUBSRIBE_GROUP_ID)],
-    },
   };
 
-  send_discord_webhook_notification(msg);
+  await send_discord_webhook_notification(msg);
 
-  //   response = await sendgrid.send(msg).catch((error) => {
-  //     console.error(error);
-  //   });
-
-  console.debug("Message emailed with status %d", response[0].statusCode);
+  console.debug("notification sent with status %d", response[0].statusCode);
   return true;
 }
 
-module.exports.send_email_notification = send_email_notification;
+module.exports.send_notification = send_notification;
