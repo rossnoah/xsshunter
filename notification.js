@@ -28,14 +28,14 @@ async function send_discord_webhook_notification(msg) {
     content: markdown_body,
   };
 
-  await fetch(process.env.DISCORD_WEBHOOK_URL, {
+  const response = await fetch(process.env.DISCORD_WEBHOOK_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
   });
-  console.debug("Discord notification sent");
+  return response;
 }
 
 async function send_notification(xss_payload_fire_data) {
@@ -54,9 +54,9 @@ async function send_notification(xss_payload_fire_data) {
     html: notification_html_email_body,
   };
 
-  await send_discord_webhook_notification(msg);
+  const response = await send_discord_webhook_notification(msg);
 
-  console.debug("notification sent with status %d", response[0].statusCode);
+  console.debug("notification sent with status %d", response.status);
   return true;
 }
 
